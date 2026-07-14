@@ -28,10 +28,12 @@
   .choice:not(.locked):hover{border-color:var(--accent);}
   .choice.correct{background:rgba(52,211,153,.18); border-color:var(--ok);}
   .choice.wrong{background:rgba(248,113,113,.18); border-color:var(--ng);}
-  #result{display:none; margin-top:18px; font-size:20px; font-weight:700; text-align:center;}
+  #result{font-size:17px; font-weight:700;}
   #result.ok{color:var(--ok);} #result.ng{color:var(--ng);}
   #answer-detail{display:none; margin-top:8px; color:var(--sub); font-size:14px; text-align:center;}
-  #next-btn{display:none; margin-top:18px; background:var(--accent); color:#082f49; border:none; border-radius:12px; padding:13px 44px; font-size:16px; font-weight:700; cursor:pointer;}
+  #definition{display:none; margin-top:14px; font-size:15px; line-height:1.6; color:#a7c4e0; background:var(--card2); border-left:3px solid var(--accent); border-radius:8px; padding:10px 14px; text-align:left; width:100%;}
+  #bottom-bar{display:none; position:fixed; left:0; right:0; bottom:0; z-index:5; justify-content:center; align-items:center; gap:16px; padding:10px 16px calc(10px + env(safe-area-inset-bottom)); background:rgba(15,23,42,.94); border-top:1px solid #334155;}
+  #next-btn{background:var(--accent); color:#082f49; border:none; border-radius:12px; padding:12px 40px; font-size:16px; font-weight:700; cursor:pointer;}
   footer{width:100%; max-width:640px; padding:0 16px 20px; display:flex; gap:10px;}
   .ft-btn{flex:1; background:var(--card); border:1px solid #334155; color:var(--sub); border-radius:10px; padding:10px; font-size:13px; cursor:pointer;}
   #modal{display:none; position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:10; justify-content:center; align-items:center; padding:20px;}
@@ -40,6 +42,12 @@
   .weak-row{display:flex; justify-content:space-between; padding:8px 4px; border-bottom:1px solid #334155; font-size:14px;}
   .weak-row .m{color:var(--sub); margin-left:10px; flex:1; text-align:right;}
   .badge{color:var(--ng); font-weight:700; margin-left:10px;}
+  .badge.flag{color:#fbbf24;}
+  #flag-btn{background:var(--card2); border:none; border-radius:50%; width:46px; height:46px; font-size:22px; cursor:pointer; color:#fbbf24; flex:0 0 auto;}
+  #flag-btn.on{background:rgba(251,191,36,.18);}
+  .tabs{display:flex; gap:8px; margin-bottom:14px;}
+  .tab{flex:1; background:var(--card2); border:none; color:var(--sub); border-radius:8px; padding:9px; font-size:13px; cursor:pointer;}
+  .tab.active{background:var(--accent); color:#082f49; font-weight:700;}
   #close-modal{margin-top:14px; width:100%; background:var(--card2); border:none; color:var(--text); border-radius:10px; padding:11px; cursor:pointer;}
 </style>
 </head>
@@ -53,242 +61,289 @@
     <div class="word-row">
       <div id="word"></div>
       <button class="speak-btn" id="speak" title="発音">🔊</button>
+      <button id="flag-btn" title="怪しい単語としてチェック">☆</button>
     </div>
     <div id="example"></div>
+    <div id="definition"></div>
     <div id="choices"></div>
-    <div id="result"></div>
     <div id="answer-detail"></div>
-    <button id="next-btn">次へ →</button>
     <div class="hint" id="hint">タップして例文を表示</div>
   </div>
 </main>
 <footer>
-  <button class="ft-btn" id="weak-btn">苦手単語リスト</button>
-  <button class="ft-btn" id="reset-btn">学習記録をリセット</button>
+  <button class="ft-btn" id="list-btn">単語リスト</button>
+  <button class="ft-btn" id="reset-btn">記録をリセット</button>
 </footer>
+<div id="bottom-bar"><span id="result"></span><button id="next-btn">次へ →</button></div>
 <div id="modal"><div id="modal-box">
-  <h2>苦手単語(間違いが多い順)</h2>
+  <div class="tabs">
+    <button class="tab active" id="tab-weak">苦手(間違えた)</button>
+    <button class="tab" id="tab-flag">☆チェック済み</button>
+  </div>
   <div id="weak-list"></div>
   <button id="close-modal">閉じる</button>
 </div></div>
 
 <script>
 const WORDS = [
-{w:"merchant",m:"商人",e:"The merchant sold silk and spices at the market."},
-{w:"diplomacy",m:"外交",e:"The two countries resolved the conflict through diplomacy."},
-{w:"observatory",m:"天文台",e:"Scientists at the observatory study distant stars."},
-{w:"herbivore",m:"草食動物",e:"A deer is a herbivore that feeds on grass and leaves."},
-{w:"lava",m:"溶岩",e:"Hot lava flowed down the side of the volcano."},
-{w:"usage",m:"使用、用法",e:"The usage of smartphones has increased rapidly."},
-{w:"ancestor",m:"先祖、祖先",e:"My ancestors moved to this island 200 years ago."},
-{w:"undertake",m:"引き受ける、着手する",e:"She agreed to undertake the difficult project."},
-{w:"accomplish",m:"成し遂げる",e:"He accomplished all of his goals this year."},
-{w:"sufficient",m:"十分な",e:"We have sufficient food for the whole week."},
-{w:"affluent",m:"裕福な",e:"They live in an affluent neighborhood with large houses."},
-{w:"saw",m:"のこぎり",e:"He cut the wood with a saw."},
-{w:"indeed",m:"実に、本当に",e:"The results were indeed surprising."},
-{w:"parcel",m:"小包",e:"A parcel arrived at my door this morning."},
-{w:"apparent",m:"明らかな",e:"It was apparent that she was very tired."},
-{w:"odor",m:"におい、臭気",e:"A strange odor came from the old refrigerator."},
-{w:"suppose",m:"思う、仮定する",e:"I suppose he will arrive late tonight."},
-{w:"brochure",m:"パンフレット",e:"I picked up a brochure about the museum tour."},
-{w:"tuition",m:"授業料",e:"College tuition has risen sharply in recent years."},
-{w:"sculpture",m:"彫刻",e:"The sculpture in the park was made of bronze."},
-{w:"habitat",m:"生息地",e:"The forest is a natural habitat for many birds."},
-{w:"tissue",m:"(生物の)組織",e:"Muscle tissue is made of many similar cells."},
-{w:"resemble",m:"似ている",e:"She closely resembles her mother."},
-{w:"generate",m:"生み出す、発生させる",e:"Solar panels generate electricity from sunlight."},
-{w:"religion",m:"宗教",e:"People practice many different religions around the world."},
-{w:"resist",m:"抵抗する",e:"The soldiers resisted the enemy attack for days."},
-{w:"restrict",m:"制限する",e:"The city restricts parking on busy streets."},
-{w:"priest",m:"聖職者、司祭",e:"The priest performed the wedding ceremony."},
-{w:"occupy",m:"占める、占領する",e:"Students occupy most of the seats in this cafe."},
-{w:"maize",m:"トウモロコシ",e:"Farmers in the region grow maize and beans."},
-{w:"halt",m:"停止(する)",e:"The train came to a sudden halt."},
-{w:"modest",m:"控えめな、質素な",e:"Despite his success, he remained modest."},
-{w:"declare",m:"宣言する",e:"The government declared a state of emergency."},
-{w:"carnivore",m:"肉食動物",e:"A lion is a carnivore that hunts other animals."},
-{w:"shallow",m:"浅い",e:"Children played in the shallow water near the shore."},
-{w:"garment",m:"衣服",e:"Each garment in the shop was made by hand."},
-{w:"pursue",m:"追求する、追いかける",e:"She decided to pursue a career in medicine."},
-{w:"offend",m:"怒らせる、気分を害させる",e:"His rude joke offended many people."},
-{w:"settle",m:"定住する、解決する",e:"Many immigrants settled in this valley."},
-{w:"fragment",m:"断片、破片",e:"Fragments of the broken vase lay on the floor."},
-{w:"marsh",m:"湿地、沼地",e:"Many birds nest in the marsh near the river."},
-{w:"vary",m:"変わる、異なる",e:"Prices vary depending on the season."},
-{w:"nebula",m:"星雲",e:"The telescope captured images of a distant nebula."},
-{w:"algae",m:"藻類",e:"Green algae covered the surface of the pond."},
-{w:"emphasize",m:"強調する",e:"The teacher emphasized the importance of daily practice."},
-{w:"primitive",m:"原始的な",e:"Primitive tools were made of stone and bone."},
-{w:"awful",m:"ひどい、恐ろしい",e:"The weather was awful during our trip."},
-{w:"stable",m:"安定した",e:"The patient's condition is now stable."},
-{w:"toe",m:"つま先、足の指",e:"She hurt her toe on the stairs."},
-{w:"flag",m:"(動詞)弱る、衰える",e:"His energy began to flag after hours of work."},
-{w:"hostage",m:"人質",e:"The robbers held three people as hostages."},
-{w:"beehive",m:"蜂の巣",e:"Bees returned to the beehive with pollen."},
-{w:"wrinkle",m:"しわ",e:"He ironed the wrinkles out of his shirt."},
-{w:"spectacle",m:"光景、見世物",e:"The parade was an amazing spectacle."},
-{w:"exception",m:"例外",e:"Everyone must attend; there are no exceptions."},
-{w:"nightmare",m:"悪夢",e:"The child woke up crying from a nightmare."},
-{w:"obtain",m:"手に入れる",e:"You must obtain a visa before traveling there."},
-{w:"glory",m:"栄光、名誉",e:"The team fought for the glory of victory."},
-{w:"primate",m:"霊長類",e:"Chimpanzees are primates closely related to humans."},
-{w:"deficit",m:"不足、赤字",e:"The government is trying to reduce the budget deficit."},
-{w:"punctual",m:"時間を守る",e:"He is always punctual for meetings."},
-{w:"abundant",m:"豊富な",e:"The region has abundant natural resources."},
-{w:"plural",m:"複数の",e:"The plural form of “child” is “children”."},
-{w:"enormous",m:"巨大な",e:"An enormous statue stands in the city center."},
-{w:"surround",m:"囲む",e:"Tall mountains surround the small village."},
-{w:"masterpiece",m:"傑作",e:"This painting is considered his masterpiece."},
-{w:"ingredient",m:"材料、成分",e:"Mix all the ingredients in a large bowl."},
-{w:"stellar",m:"星の",e:"The scientist studies stellar evolution."},
-{w:"stride",m:"大股の一歩",e:"He crossed the room in three strides."},
-{w:"cope",m:"対処する",e:"She learned to cope with the stress of her job."},
-{w:"fame",m:"名声",e:"The actor gained fame after his first movie."},
-{w:"infection",m:"感染",e:"Wash your hands to prevent infection."},
-{w:"sue",m:"訴える、告訴する",e:"The company was sued for breaking the contract."},
-{w:"spear",m:"槍",e:"The hunter threw a spear at the wild boar."},
-{w:"spontaneous",m:"自発的な、自然発生的な",e:"The crowd broke into spontaneous applause."},
-{w:"continent",m:"大陸",e:"Africa is the second largest continent."},
-{w:"solid",m:"固体、立体",e:"Ice is the solid form of water."},
-{w:"bathe",m:"入浴する、水浴びする",e:"The children bathe in the river every evening."},
-{w:"sort",m:"種類",e:"What sort of music do you like?"},
-{w:"diameter",m:"直径",e:"The circle has a diameter of ten centimeters."},
-{w:"harsh",m:"厳しい、過酷な",e:"The desert has a harsh climate."},
-{w:"privilege",m:"特権",e:"Education should be a right, not a privilege."},
-{w:"underscore",m:"強調する",e:"The report underscores the need for reform."},
-{w:"outstanding",m:"傑出した、未解決の",e:"She is an outstanding student in mathematics."},
-{w:"horizontal",m:"水平の",e:"Draw a horizontal line across the page."},
-{w:"observe",m:"観察する",e:"Scientists observed the behavior of the birds."},
-{w:"investigate",m:"調査する",e:"The police are investigating the cause of the fire."},
-{w:"appreciate",m:"高く評価する、感謝する",e:"I really appreciate your help."},
-{w:"revenue",m:"収入、歳入",e:"Tax revenues increased by five percent this year."},
-{w:"crucial",m:"決定的に重要な",e:"Sleep plays a crucial role in memory."},
-{w:"pension",m:"年金",e:"He lives on a small pension after retirement."},
-{w:"ensure",m:"保証する、確実にする",e:"Please ensure that all doors are locked."},
-{w:"valid",m:"妥当な、有効な",e:"You need a valid passport to enter the country."},
-{w:"burden",m:"負担、重荷",e:"The heavy taxes were a burden on farmers."},
-{w:"social mobility",m:"社会的流動性",e:"Education can increase social mobility."},
-{w:"beneath",m:"~の下に",e:"The cat was hiding beneath the table."},
-{w:"explode",m:"爆発する",e:"The bomb exploded near the old bridge."},
-{w:"debris",m:"破片、がれき",e:"The street was covered with debris after the storm."},
-{w:"revive",m:"復活させる、生き返らせる",e:"The city plans to revive its old shopping district."},
-{w:"antiquity",m:"古代",e:"These coins date back to antiquity."},
-{w:"perspective",m:"視点、観点",e:"Try to see the problem from a different perspective."},
-{w:"anatomy",m:"解剖学",e:"Medical students study human anatomy."},
-{w:"commission",m:"任務、手数料",e:"The agent receives a five percent commission."},
-{w:"regulate",m:"規制する",e:"The government regulates the sale of medicine."},
-{w:"equator",m:"赤道",e:"Countries near the equator are hot all year."},
-{w:"significant",m:"重要な、意義深い",e:"There was a significant increase in sales."},
-{w:"secure",m:"(動詞)確保する",e:"The company secured funding for a new project."},
-{w:"indicate",m:"示す",e:"The data indicates a rise in temperature."},
-{w:"digest",m:"消化する",e:"It takes hours to digest a heavy meal."},
-{w:"ruler",m:"統治者、支配者",e:"Ancient rulers built great palaces."},
-{w:"thrive",m:"繁栄する、よく育つ",e:"These plants thrive in warm, wet climates."},
-{w:"invalid",m:"無効な、病弱な",e:"The ticket is invalid after the expiration date."},
-{w:"likelihood",m:"可能性、公算",e:"There is a high likelihood of rain tomorrow."},
-{w:"disturbance",m:"妨害、騒動",e:"The noise caused a disturbance in the library."},
-{w:"feasible",m:"実行可能な",e:"The plan is feasible with our current budget."},
-{w:"term",m:"条件、期間、用語",e:"Read the terms of the contract carefully."},
-{w:"transaction",m:"取引",e:"The bank records every transaction."},
-{w:"artificial",m:"人工の",e:"The garden uses artificial light in winter."},
-{w:"modify",m:"修正する、変更する",e:"We modified the design to reduce costs."},
-{w:"diabetes",m:"糖尿病",e:"Diabetes affects the body's ability to control sugar."},
-{w:"optimistic",m:"楽観的な",e:"She is optimistic about the future."},
-{w:"abundance",m:"豊富さ",e:"The island has an abundance of fresh fruit."},
-{w:"concentrate",m:"集中する",e:"I can't concentrate with all this noise."},
-{w:"cordial",m:"心のこもった",e:"We received a cordial welcome from the host."},
-{w:"artisan",m:"職人",e:"Local artisans sell handmade pottery here."},
-{w:"cognition",m:"認知、認識",e:"Sleep loss can affect human cognition."},
-{w:"cognitive",m:"認知の",e:"Reading improves children's cognitive skills."},
-{w:"exclusively",m:"独占的に、もっぱら",e:"This lounge is exclusively for members."},
-{w:"complimentary",m:"無料の、称賛の",e:"The hotel offers complimentary breakfast."},
-{w:"fatigue",m:"疲労",e:"He felt extreme fatigue after the marathon."},
-{w:"diminish",m:"減らす、減少する",e:"The medicine diminished the pain quickly."},
-{w:"contentment",m:"満足",e:"She smiled with quiet contentment."},
-{w:"notion",m:"考え、概念",e:"He rejected the notion that money brings happiness."},
-{w:"ease",m:"楽にする、和らげる",e:"This tool eases the work of farmers."},
-{w:"enhance",m:"高める、強化する",e:"Good lighting enhances the beauty of the room."},
-{w:"as a matter of fact",m:"実のところ",e:"As a matter of fact, I have never been abroad."},
-{w:"imply",m:"暗示する、ほのめかす",e:"His silence implied disagreement."},
-{w:"leaking",m:"漏れている",e:"We fixed the leaking pipe in the kitchen."},
-{w:"captivate",m:"魅了する",e:"The singer captivated the entire audience."},
-{w:"intense",m:"強烈な、激しい",e:"The intense heat made it hard to work outside."},
-{w:"distract",m:"気を散らす",e:"Don't distract me while I'm studying."},
-{w:"combat",m:"戦う",e:"The city is combating air pollution."},
-{w:"expedite",m:"早める、迅速に処理する",e:"We paid extra to expedite the delivery."},
-{w:"degradation",m:"劣化、悪化",e:"Deforestation leads to soil degradation."},
-{w:"distinguish",m:"区別する",e:"It is hard to distinguish the twins."},
-{w:"wheat",m:"小麦",e:"Bread is made from wheat flour."},
-{w:"distinct",m:"明確な、はっきり異なる",e:"The two languages are quite distinct."},
-{w:"scarce",m:"希少な、乏しい",e:"Water is scarce in the desert."},
-{w:"etiquette",m:"礼儀作法",e:"Table etiquette differs from country to country."},
-{w:"arthropod",m:"節足動物(クモ・昆虫・エビなど)",e:"Spiders and crabs are arthropods."},
-{w:"molt",m:"脱皮する",e:"Snakes molt several times a year."},
-{w:"norm",m:"標準、規範",e:"Working from home has become the norm."},
-{w:"inconspicuous",m:"目立たない",e:"The camera was inconspicuous, hidden behind books."},
-{w:"nectar",m:"花の蜜",e:"Bees collect nectar from flowers."},
-{w:"cohesion",m:"結束、凝集",e:"Team cohesion is important for success."},
-{w:"well-laid-out",m:"整理された、よく設計された",e:"The report was clear and well-laid-out."},
-{w:"sophisticated",m:"洗練された",e:"She has sophisticated taste in fashion."},
-{w:"drainage",m:"排水",e:"Good drainage prevents flooding in the fields."},
-{w:"foundational",m:"基礎の",e:"Math is a foundational skill for science."},
-{w:"intellectual",m:"知識人",e:"The cafe was popular among intellectuals and artists."},
-{w:"eliminate",m:"除去する、排除する",e:"The new system eliminates common errors."},
-{w:"obstacle",m:"障害物",e:"Lack of money was the biggest obstacle."},
-{w:"vigilance",m:"警戒",e:"Constant vigilance prevented the attack."},
-{w:"pod",m:"(クジラ・イルカなどの)小群",e:"A pod of dolphins swam beside the boat."},
-{w:"promptly",m:"直ちに",e:"She replied to my email promptly."},
-{w:"mandatory",m:"義務的な、必須の",e:"Wearing a helmet is mandatory on this site."},
-{w:"utility",m:"有用性",e:"The utility of this tool is obvious to everyone."},
-{w:"rational",m:"合理的な",e:"Try to make a rational decision, not an emotional one."},
-{w:"gain",m:"得る、獲得する",e:"She gained experience through the internship."},
-{w:"aversion",m:"嫌悪",e:"He has an aversion to crowded places."},
-{w:"irrational",m:"不合理な",e:"Fear of the dark is often irrational."},
-{w:"favor",m:"好む",e:"Most voters favor the new policy."},
-{w:"recall",m:"思い出す",e:"I can't recall where I put my keys."},
-{w:"grant",m:"補助金、奨学金",e:"She received a grant to study abroad."},
-{w:"accommodation",m:"宿泊施設、適応",e:"The price includes flights and accommodation."},
-{w:"extensive",m:"広範囲の",e:"The library has an extensive collection of maps."},
-{w:"pivotal",m:"中心的な、要となる",e:"She played a pivotal role in the negotiation."},
-{w:"acquire",m:"取得する、習得する",e:"It takes years to acquire a new language."},
-{w:"comprehend",m:"理解する",e:"I couldn't comprehend the difficult lecture."},
-{w:"decision-making",m:"意思決定",e:"Data can improve business decision-making."},
-{w:"self-awareness",m:"自己認識",e:"Meditation can increase self-awareness."},
-{w:"conversely",m:"逆に",e:"Conversely, lower prices may reduce quality."},
-{w:"phenomena",m:"現象(単数形: phenomenon)",e:"Auroras are natural phenomena seen near the poles."},
-{w:"decipher",m:"解読する",e:"Scholars finally deciphered the ancient script."},
-{w:"define",m:"定義する、明確にする",e:"Please define the word before using it."},
-{w:"deprive",m:"奪う",e:"The noise deprived me of sleep last night."},
-{w:"sleep deprivation",m:"睡眠不足",e:"Sleep deprivation harms memory and focus."},
-{w:"immune",m:"免疫のある",e:"Vaccines make people immune to the disease."},
-{w:"complement",m:"補完物、補完する",e:"The wine perfectly complements the cheese."},
-{w:"compliment",m:"賛辞、褒め言葉",e:"She received a compliment on her presentation."},
-{w:"You bet!",m:"もちろん/どういたしまして",e:"“Can you help me?” “You bet!”"},
-{w:"Same here!",m:"私もです",e:"“I love this song.” “Same here!”"},
-{w:"endurance",m:"忍耐力、持久力",e:"Marathon running requires great endurance."},
-{w:"anecdote",m:"逸話",e:"He told a funny anecdote about his college days."},
-{w:"ambiguity",m:"曖昧さ",e:"The contract was rewritten to remove ambiguity."},
-{w:"repetition",m:"反復",e:"Repetition is the key to memorizing vocabulary."},
-{w:"initiative",m:"新しい取り組み、主導権",e:"The city launched a green energy initiative."},
-{w:"fund-raise",m:"資金を集める",e:"The students fund-raised for the school library."},
-{w:"intentional",m:"意図的な",e:"The foul was clearly intentional."},
-{w:"cite",m:"引用する、言及する",e:"The author cites several recent studies."},
-{w:"subdue",m:"鎮圧する、抑える",e:"The police subdued the violent man."},
-{w:"despair",m:"絶望",e:"He fell into despair after losing his job."},
-{w:"inherent",m:"固有の、本来備わっている",e:"Risk is inherent in any investment."},
-{w:"absurd",m:"不条理な、ばかげた",e:"The idea sounded absurd at first."},
-{w:"Exactly!",m:"その通りです",e:"“So we should leave early?” “Exactly!”"},
-{w:"ocean current",m:"海流",e:"Ocean currents affect the climate of coastal areas."},
-{w:"precipitation",m:"降水",e:"Annual precipitation is very low in this region."},
-{w:"replenish",m:"補充する",e:"Drink water to replenish lost fluids."}
+{w:"merchant",m:"商人",d:"a person who buys and sells goods in trade",e:"The merchant sold silk and spices at the market."},
+{w:"diplomacy",m:"外交",d:"the management of negotiations between nations",e:"The two countries resolved the conflict through diplomacy."},
+{w:"observatory",m:"天文台",d:"a building equipped to observe stars and planets",e:"Scientists at the observatory study distant stars."},
+{w:"herbivore",m:"草食動物",d:"an animal that feeds mainly on grass and plants",e:"A deer is a herbivore that feeds on grass and leaves."},
+{w:"lava",m:"溶岩",d:"molten rock that flows from a volcano",e:"Hot lava flowed down the side of the volcano."},
+{w:"usage",m:"使用、用法",d:"the act or way of using something",e:"The usage of smartphones has increased rapidly."},
+{w:"ancestor",m:"先祖、祖先",d:"a person from whom you are descended",e:"My ancestors moved to this island 200 years ago."},
+{w:"undertake",m:"引き受ける、着手する",d:"to promise to do or begin a task",e:"She agreed to undertake the difficult project."},
+{w:"accomplish",m:"成し遂げる",d:"to carry out a task successfully",e:"He accomplished all of his goals this year."},
+{w:"sufficient",m:"十分な",d:"enough to fulfill a need",e:"We have sufficient food for the whole week."},
+{w:"affluent",m:"裕福な",d:"having plenty of money and possessions",e:"They live in an affluent neighborhood with large houses."},
+{w:"saw",m:"のこぎり",d:"a tool for cutting wood",e:"He cut the wood with a saw."},
+{w:"indeed",m:"実に、本当に",d:"in truth; really",e:"The results were indeed surprising."},
+{w:"parcel",m:"小包",d:"a wrapped package",e:"A parcel arrived at my door this morning."},
+{w:"apparent",m:"明らかな",d:"clearly seen or understood; obvious",e:"It was apparent that she was very tired."},
+{w:"odor",m:"におい、臭気",d:"a smell, often unpleasant",e:"A strange odor came from the old refrigerator."},
+{w:"suppose",m:"思う、仮定する",d:"to think something is probably true",e:"I suppose he will arrive late tonight."},
+{w:"brochure",m:"パンフレット",d:"a small booklet with information or advertising",e:"I picked up a brochure about the museum tour."},
+{w:"tuition",m:"授業料",d:"a fee paid for instruction",e:"College tuition has risen sharply in recent years."},
+{w:"sculpture",m:"彫刻",d:"a work of art carved or shaped from stone or metal",e:"The sculpture in the park was made of bronze."},
+{w:"habitat",m:"生息地",d:"the natural home of an animal or plant",e:"The forest is a natural habitat for many birds."},
+{w:"tissue",m:"(生物の)組織",d:"a group of similar cells in an organism",e:"Muscle tissue is made of many similar cells."},
+{w:"resemble",m:"似ている",d:"to look like; appear similar to",e:"She closely resembles her mother."},
+{w:"generate",m:"生み出す、発生させる",d:"to bring into existence; produce",e:"Solar panels generate electricity from sunlight."},
+{w:"religion",m:"宗教",d:"a system of belief in a divine power",e:"People practice many different religions around the world."},
+{w:"resist",m:"抵抗する",d:"to fight against; oppose",e:"The soldiers resisted the enemy attack for days."},
+{w:"restrict",m:"制限する",d:"to place limits on",e:"The city restricts parking on busy streets."},
+{w:"priest",m:"聖職者、司祭",d:"a person who performs religious rites",e:"The priest performed the wedding ceremony."},
+{w:"occupy",m:"占める、占領する",d:"to fill or take up space, time, or a place",e:"Students occupy most of the seats in this cafe."},
+{w:"maize",m:"トウモロコシ",d:"corn",e:"Farmers in the region grow maize and beans."},
+{w:"halt",m:"停止(する)",d:"a temporary stop",e:"The train came to a sudden halt."},
+{w:"modest",m:"控えめな、質素な",d:"not boastful; marked by simplicity",e:"Despite his success, he remained modest."},
+{w:"declare",m:"宣言する",d:"to announce publicly or officially",e:"The government declared a state of emergency."},
+{w:"carnivore",m:"肉食動物",d:"an animal that feeds on flesh",e:"A lion is a carnivore that hunts other animals."},
+{w:"shallow",m:"浅い",d:"lacking physical depth",e:"Children played in the shallow water near the shore."},
+{w:"garment",m:"衣服",d:"a piece of clothing",e:"Each garment in the shop was made by hand."},
+{w:"pursue",m:"追求する、追いかける",d:"to chase after; try to achieve",e:"She decided to pursue a career in medicine."},
+{w:"offend",m:"怒らせる、気分を害させる",d:"to cause someone to feel hurt or angry",e:"His rude joke offended many people."},
+{w:"settle",m:"定住する、解決する",d:"to take up residence and become established",e:"Many immigrants settled in this valley."},
+{w:"fragment",m:"断片、破片",d:"a piece broken off",e:"Fragments of the broken vase lay on the floor."},
+{w:"marsh",m:"湿地、沼地",d:"low wet land often covered with water",e:"Many birds nest in the marsh near the river."},
+{w:"vary",m:"変わる、異なる",d:"to change or be different",e:"Prices vary depending on the season."},
+{w:"nebula",m:"星雲",d:"a cloud of cosmic gas and dust in space",e:"The telescope captured images of a distant nebula."},
+{w:"algae",m:"藻類",d:"simple plants that usually grow in water",e:"Green algae covered the surface of the pond."},
+{w:"emphasize",m:"強調する",d:"to stress the importance of",e:"The teacher emphasized the importance of daily practice."},
+{w:"primitive",m:"原始的な",d:"very old or ancient; at an early stage of development",e:"Primitive tools were made of stone and bone."},
+{w:"awful",m:"ひどい、恐ろしい",d:"very bad; dreadful",e:"The weather was awful during our trip."},
+{w:"stable",m:"安定した",d:"steady; not likely to change or fail",e:"The patient's condition is now stable."},
+{w:"toe",m:"つま先、足の指",d:"one of the digits of the foot",e:"She hurt her toe on the stairs."},
+{w:"flag",m:"(動詞)弱る、衰える",d:"to become weak or tired",e:"His energy began to flag after hours of work."},
+{w:"hostage",m:"人質",d:"a prisoner held to force another party to act",e:"The robbers held three people as hostages."},
+{w:"beehive",m:"蜂の巣",d:"a structure where bees live",e:"Bees returned to the beehive with pollen."},
+{w:"wrinkle",m:"しわ",d:"a small line or fold in a surface",e:"He ironed the wrinkles out of his shirt."},
+{w:"spectacle",m:"光景、見世物",d:"an impressive sight or show",e:"The parade was an amazing spectacle."},
+{w:"exception",m:"例外",d:"something out of the ordinary; not included in a rule",e:"Everyone must attend; there are no exceptions."},
+{w:"nightmare",m:"悪夢",d:"a frightening dream",e:"The child woke up crying from a nightmare."},
+{w:"obtain",m:"手に入れる",d:"to come into possession of",e:"You must obtain a visa before traveling there."},
+{w:"glory",m:"栄光、名誉",d:"great honor and praise",e:"The team fought for the glory of victory."},
+{w:"primate",m:"霊長類",d:"a member of the most developed and intelligent group of mammals",e:"Chimpanzees are primates closely related to humans."},
+{w:"deficit",m:"不足、赤字",d:"a lack or shortage",e:"The government is trying to reduce the budget deficit."},
+{w:"punctual",m:"時間を守る",d:"on time",e:"He is always punctual for meetings."},
+{w:"abundant",m:"豊富な",d:"present in great quantity",e:"The region has abundant natural resources."},
+{w:"plural",m:"複数の",d:"consisting of more than one",e:"The plural form of “child” is “children”."},
+{w:"enormous",m:"巨大な",d:"very large",e:"An enormous statue stands in the city center."},
+{w:"surround",m:"囲む",d:"to encircle on all sides",e:"Tall mountains surround the small village."},
+{w:"masterpiece",m:"傑作",d:"a work done with great skill",e:"This painting is considered his masterpiece."},
+{w:"ingredient",m:"材料、成分",d:"a component of a mixture",e:"Mix all the ingredients in a large bowl."},
+{w:"stellar",m:"星の",d:"relating to stars",e:"The scientist studies stellar evolution."},
+{w:"stride",m:"大股の一歩",d:"one long step",e:"He crossed the room in three strides."},
+{w:"cope",m:"対処する",d:"to deal successfully with a difficulty",e:"She learned to cope with the stress of her job."},
+{w:"fame",m:"名声",d:"the state of being widely known; good reputation",e:"The actor gained fame after his first movie."},
+{w:"infection",m:"感染",d:"contamination by germs or disease",e:"Wash your hands to prevent infection."},
+{w:"sue",m:"訴える、告訴する",d:"to take court action against",e:"The company was sued for breaking the contract."},
+{w:"spear",m:"槍",d:"a weapon with a long shaft and a sharpened point",e:"The hunter threw a spear at the wild boar."},
+{w:"spontaneous",m:"自発的な、自然発生的な",d:"arising from internal forces; not planned",e:"The crowd broke into spontaneous applause."},
+{w:"continent",m:"大陸",d:"one of the large landmasses of the earth",e:"Africa is the second largest continent."},
+{w:"solid",m:"固体、立体",d:"a figure or object having three dimensions; firm",e:"Ice is the solid form of water."},
+{w:"bathe",m:"入浴する、水浴びする",d:"to take a bath; wash in water",e:"The children bathe in the river every evening."},
+{w:"sort",m:"種類",d:"a type or kind",e:"What sort of music do you like?"},
+{w:"diameter",m:"直径",d:"a straight line passing through the center of a circle",e:"The circle has a diameter of ten centimeters."},
+{w:"harsh",m:"厳しい、過酷な",d:"rough and severe",e:"The desert has a harsh climate."},
+{w:"privilege",m:"特権",d:"a special benefit, right, or advantage",e:"Education should be a right, not a privilege."},
+{w:"underscore",m:"強調する",d:"to emphasize",e:"The report underscores the need for reform."},
+{w:"outstanding",m:"傑出した、未解決の",d:"distinguished in excellence; not yet resolved",e:"She is an outstanding student in mathematics."},
+{w:"horizontal",m:"水平の",d:"flat and level; parallel to the ground",e:"Draw a horizontal line across the page."},
+{w:"observe",m:"観察する",d:"to watch and study carefully",e:"Scientists observed the behavior of the birds."},
+{w:"investigate",m:"調査する",d:"to examine in detail; inspect",e:"The police are investigating the cause of the fire."},
+{w:"appreciate",m:"高く評価する、感謝する",d:"to regard highly; to be grateful for",e:"I really appreciate your help."},
+{w:"revenue",m:"収入、歳入",d:"income, especially of a government or company",e:"Tax revenues increased by five percent this year."},
+{w:"crucial",m:"決定的に重要な",d:"extremely important",e:"Sleep plays a crucial role in memory."},
+{w:"pension",m:"年金",d:"money paid regularly after a person stops working",e:"He lives on a small pension after retirement."},
+{w:"ensure",m:"保証する、確実にする",d:"to make certain; guarantee",e:"Please ensure that all doors are locked."},
+{w:"valid",m:"妥当な、有効な",d:"logical; legally acceptable",e:"You need a valid passport to enter the country."},
+{w:"burden",m:"負担、重荷",d:"a heavy load or responsibility",e:"The heavy taxes were a burden on farmers."},
+{w:"social mobility",m:"社会的流動性",d:"the ability to move between social positions",e:"Education can increase social mobility."},
+{w:"beneath",m:"~の下に",d:"under",e:"The cat was hiding beneath the table."},
+{w:"explode",m:"爆発する",d:"to burst with a violent release of energy",e:"The bomb exploded near the old bridge."},
+{w:"debris",m:"破片、がれき",d:"scattered fragments or wreckage",e:"The street was covered with debris after the storm."},
+{w:"revive",m:"復活させる、生き返らせる",d:"to bring back to life or use",e:"The city plans to revive its old shopping district."},
+{w:"antiquity",m:"古代",d:"ancient times",e:"These coins date back to antiquity."},
+{w:"perspective",m:"視点、観点",d:"a viewpoint; way of seeing things",e:"Try to see the problem from a different perspective."},
+{w:"anatomy",m:"解剖学",d:"the science of the structure of organisms",e:"Medical students study human anatomy."},
+{w:"commission",m:"任務、手数料",d:"a task given to someone; a fee for services",e:"The agent receives a five percent commission."},
+{w:"regulate",m:"規制する",d:"to control by rules",e:"The government regulates the sale of medicine."},
+{w:"equator",m:"赤道",d:"the imaginary circle dividing the Earth into northern and southern hemispheres",e:"Countries near the equator are hot all year."},
+{w:"significant",m:"重要な、意義深い",d:"important; meaningful",e:"There was a significant increase in sales."},
+{w:"secure",m:"(動詞)確保する",d:"to obtain or make certain of",e:"The company secured funding for a new project."},
+{w:"indicate",m:"示す",d:"to show or point out",e:"The data indicates a rise in temperature."},
+{w:"digest",m:"消化する",d:"to break down and absorb food",e:"It takes hours to digest a heavy meal."},
+{w:"ruler",m:"統治者、支配者",d:"a person who governs",e:"Ancient rulers built great palaces."},
+{w:"thrive",m:"繁栄する、よく育つ",d:"to grow vigorously; prosper",e:"These plants thrive in warm, wet climates."},
+{w:"invalid",m:"無効な、病弱な",d:"not valid; expired",e:"The ticket is invalid after the expiration date."},
+{w:"likelihood",m:"可能性、公算",d:"probability",e:"There is a high likelihood of rain tomorrow."},
+{w:"disturbance",m:"妨害、騒動",d:"something that interrupts or disturbs",e:"The noise caused a disturbance in the library."},
+{w:"feasible",m:"実行可能な",d:"able to be carried out",e:"The plan is feasible with our current budget."},
+{w:"term",m:"条件、期間、用語",d:"a condition of an agreement; a period of time",e:"Read the terms of the contract carefully."},
+{w:"transaction",m:"取引",d:"a business deal",e:"The bank records every transaction."},
+{w:"artificial",m:"人工の",d:"made by humans; not natural",e:"The garden uses artificial light in winter."},
+{w:"modify",m:"修正する、変更する",d:"to change or adjust",e:"We modified the design to reduce costs."},
+{w:"diabetes",m:"糖尿病",d:"a disease impairing the body's ability to process sugar",e:"Diabetes affects the body's ability to control sugar."},
+{w:"optimistic",m:"楽観的な",d:"expecting good things; seeing the positive side",e:"She is optimistic about the future."},
+{w:"abundance",m:"豊富さ",d:"a large quantity; richness",e:"The island has an abundance of fresh fruit."},
+{w:"concentrate",m:"集中する",d:"to focus one's attention",e:"I can't concentrate with all this noise."},
+{w:"cordial",m:"心のこもった",d:"warm and friendly",e:"We received a cordial welcome from the host."},
+{w:"artisan",m:"職人",d:"a skilled worker who makes things by hand",e:"Local artisans sell handmade pottery here."},
+{w:"cognition",m:"認知、認識",d:"the mental process of knowing; awareness",e:"Sleep loss can affect human cognition."},
+{w:"cognitive",m:"認知の",d:"relating to the mental processes of understanding",e:"Reading improves children's cognitive skills."},
+{w:"exclusively",m:"独占的に、もっぱら",d:"only; limited to one group",e:"This lounge is exclusively for members."},
+{w:"complimentary",m:"無料の、称賛の",d:"given free of charge; expressing praise",e:"The hotel offers complimentary breakfast."},
+{w:"fatigue",m:"疲労",d:"extreme tiredness",e:"He felt extreme fatigue after the marathon."},
+{w:"diminish",m:"減らす、減少する",d:"to make or become smaller; reduce",e:"The medicine diminished the pain quickly."},
+{w:"contentment",m:"満足",d:"satisfaction",e:"She smiled with quiet contentment."},
+{w:"notion",m:"考え、概念",d:"an idea or belief",e:"He rejected the notion that money brings happiness."},
+{w:"ease",m:"楽にする、和らげる",d:"to make easier; relieve",e:"This tool eases the work of farmers."},
+{w:"enhance",m:"高める、強化する",d:"to raise the value or quality of",e:"Good lighting enhances the beauty of the room."},
+{w:"as a matter of fact",m:"実のところ",d:"in fact; actually",e:"As a matter of fact, I have never been abroad."},
+{w:"imply",m:"暗示する、ほのめかす",d:"to suggest without saying directly",e:"His silence implied disagreement."},
+{w:"leaking",m:"漏れている",d:"allowing a liquid to enter or escape",e:"We fixed the leaking pipe in the kitchen."},
+{w:"captivate",m:"魅了する",d:"to charm; hold the attention of",e:"The singer captivated the entire audience."},
+{w:"intense",m:"強烈な、激しい",d:"very strong",e:"The intense heat made it hard to work outside."},
+{w:"distract",m:"気を散らす",d:"to draw someone's attention away",e:"Don't distract me while I'm studying."},
+{w:"combat",m:"戦う",d:"to fight against",e:"The city is combating air pollution."},
+{w:"expedite",m:"早める、迅速に処理する",d:"to speed up a process",e:"We paid extra to expedite the delivery."},
+{w:"degradation",m:"劣化、悪化",d:"the process of becoming worse in quality",e:"Deforestation leads to soil degradation."},
+{w:"distinguish",m:"区別する",d:"to see or point out differences",e:"It is hard to distinguish the twins."},
+{w:"wheat",m:"小麦",d:"a grain used to make flour and bread",e:"Bread is made from wheat flour."},
+{w:"distinct",m:"明確な、はっきり異なる",d:"clearly different or noticeable",e:"The two languages are quite distinct."},
+{w:"scarce",m:"希少な、乏しい",d:"rare; in short supply",e:"Water is scarce in the desert."},
+{w:"etiquette",m:"礼儀作法",d:"rules that govern polite social behavior",e:"Table etiquette differs from country to country."},
+{w:"arthropod",m:"節足動物(クモ・昆虫・エビなど)",d:"an animal with a segmented body, such as insects, spiders, and crabs",e:"Spiders and crabs are arthropods."},
+{w:"molt",m:"脱皮する",d:"to shed skin or feathers to allow new growth",e:"Snakes molt several times a year."},
+{w:"norm",m:"標準、規範",d:"a standard; the usual pattern",e:"Working from home has become the norm."},
+{w:"inconspicuous",m:"目立たない",d:"not attracting attention",e:"The camera was inconspicuous, hidden behind books."},
+{w:"nectar",m:"花の蜜",d:"a sweet liquid produced by plants that attracts pollinators",e:"Bees collect nectar from flowers."},
+{w:"cohesion",m:"結束、凝集",d:"the act of sticking together",e:"Team cohesion is important for success."},
+{w:"well-laid-out",m:"整理された、よく設計された",d:"arranged in a clear, organized way",e:"The report was clear and well-laid-out."},
+{w:"sophisticated",m:"洗練された",d:"refined; highly developed",e:"She has sophisticated taste in fashion."},
+{w:"drainage",m:"排水",d:"the process of removing water",e:"Good drainage prevents flooding in the fields."},
+{w:"foundational",m:"基礎の",d:"forming a base or foundation",e:"Math is a foundational skill for science."},
+{w:"intellectual",m:"知識人",d:"a highly intelligent person",e:"The cafe was popular among intellectuals and artists."},
+{w:"eliminate",m:"除去する、排除する",d:"to remove completely",e:"The new system eliminates common errors."},
+{w:"obstacle",m:"障害物",d:"something that blocks progress",e:"Lack of money was the biggest obstacle."},
+{w:"vigilance",m:"警戒",d:"careful watch for possible danger",e:"Constant vigilance prevented the attack."},
+{w:"pod",m:"(クジラ・イルカなどの)小群",d:"a small group of whales or dolphins",e:"A pod of dolphins swam beside the boat."},
+{w:"promptly",m:"直ちに",d:"immediately",e:"She replied to my email promptly."},
+{w:"mandatory",m:"義務的な、必須の",d:"required; obligatory",e:"Wearing a helmet is mandatory on this site."},
+{w:"utility",m:"有用性",d:"usefulness",e:"The utility of this tool is obvious to everyone."},
+{w:"rational",m:"合理的な",d:"logical; based on reason",e:"Try to make a rational decision, not an emotional one."},
+{w:"gain",m:"得る、獲得する",d:"to acquire or obtain",e:"She gained experience through the internship."},
+{w:"aversion",m:"嫌悪",d:"a strong dislike",e:"He has an aversion to crowded places."},
+{w:"irrational",m:"不合理な",d:"not logical",e:"Fear of the dark is often irrational."},
+{w:"favor",m:"好む",d:"to prefer",e:"Most voters favor the new policy."},
+{w:"recall",m:"思い出す",d:"to bring back to mind; remember",e:"I can't recall where I put my keys."},
+{w:"grant",m:"補助金、奨学金",d:"money given for a special purpose, such as study or research",e:"She received a grant to study abroad."},
+{w:"accommodation",m:"宿泊施設、適応",d:"a place to stay; adjustment to new conditions",e:"The price includes flights and accommodation."},
+{w:"extensive",m:"広範囲の",d:"spreading over a large area",e:"The library has an extensive collection of maps."},
+{w:"pivotal",m:"中心的な、要となる",d:"of central importance",e:"She played a pivotal role in the negotiation."},
+{w:"acquire",m:"取得する、習得する",d:"to gain or obtain for oneself",e:"It takes years to acquire a new language."},
+{w:"comprehend",m:"理解する",d:"to understand",e:"I couldn't comprehend the difficult lecture."},
+{w:"decision-making",m:"意思決定",d:"the process of making choices",e:"Data can improve business decision-making."},
+{w:"self-awareness",m:"自己認識",d:"knowledge of one's own character and feelings",e:"Meditation can increase self-awareness."},
+{w:"conversely",m:"逆に",d:"in the opposite way",e:"Conversely, lower prices may reduce quality."},
+{w:"phenomena",m:"現象(単数形: phenomenon)",d:"things that happen and can be observed (sing. phenomenon)",e:"Auroras are natural phenomena seen near the poles."},
+{w:"decipher",m:"解読する",d:"to work out the meaning of a code or old text",e:"Scholars finally deciphered the ancient script."},
+{w:"define",m:"定義する、明確にする",d:"to explain the meaning of something clearly",e:"Please define the word before using it."},
+{w:"deprive",m:"奪う",d:"to take away; deny",e:"The noise deprived me of sleep last night."},
+{w:"sleep deprivation",m:"睡眠不足",d:"lack of sleep",e:"Sleep deprivation harms memory and focus."},
+{w:"immune",m:"免疫のある",d:"safe from a disease",e:"Vaccines make people immune to the disease."},
+{w:"complement",m:"補完物、補完する",d:"something added to complete a whole",e:"The wine perfectly complements the cheese."},
+{w:"compliment",m:"賛辞、褒め言葉",d:"an expression of admiration",e:"She received a compliment on her presentation."},
+{w:"You bet!",m:"もちろん/どういたしまして",d:"sure; you're welcome",e:"“Can you help me?” “You bet!”"},
+{w:"Same here!",m:"私もです",d:"me too",e:"“I love this song.” “Same here!”"},
+{w:"endurance",m:"忍耐力、持久力",d:"the power to withstand hardship or stress",e:"Marathon running requires great endurance."},
+{w:"anecdote",m:"逸話",d:"a short interesting story about a real event",e:"He told a funny anecdote about his college days."},
+{w:"ambiguity",m:"曖昧さ",d:"the state of having more than one possible meaning",e:"The contract was rewritten to remove ambiguity."},
+{w:"repetition",m:"反復",d:"the act of doing or performing again",e:"Repetition is the key to memorizing vocabulary."},
+{w:"initiative",m:"新しい取り組み、主導権",d:"a new plan or effort; the power to take the lead",e:"The city launched a green energy initiative."},
+{w:"fund-raise",m:"資金を集める",d:"to raise money for a cause or project",e:"The students fund-raised for the school library."},
+{w:"intentional",m:"意図的な",d:"done on purpose",e:"The foul was clearly intentional."},
+{w:"cite",m:"引用する、言及する",d:"to refer to; quote as evidence",e:"The author cites several recent studies."},
+{w:"subdue",m:"鎮圧する、抑える",d:"to put down by force; bring under control",e:"The police subdued the violent man."},
+{w:"despair",m:"絶望",d:"a state in which all hope is lost",e:"He fell into despair after losing his job."},
+{w:"inherent",m:"固有の、本来備わっている",d:"existing as a natural or built-in part",e:"Risk is inherent in any investment."},
+{w:"absurd",m:"不条理な、ばかげた",d:"against reason; ridiculous",e:"The idea sounded absurd at first."},
+{w:"Exactly!",m:"その通りです",d:"that's right",e:"“So we should leave early?” “Exactly!”"},
+{w:"ocean current",m:"海流",d:"a continuous directed flow of ocean water",e:"Ocean currents affect the climate of coastal areas."},
+{w:"precipitation",m:"降水",d:"water falling to earth as rain or snow",e:"Annual precipitation is very low in this region."},
+{w:"replenish",m:"補充する",d:"to fill up again",e:"Drink water to replenish lost fluids."},
+{w:"vegetation",m:"植生",d:"plants that cover a particular area",e:"Dense vegetation covered the forest floor."},
+{w:"external",m:"外部の",d:"relating to or on the outside",e:"The building has an external staircase."},
+{w:"fungi",m:"菌類(単数: fungus)",d:"organisms such as mushrooms and molds",e:"Fungi help break down dead plants."},
+{w:"decompose",m:"分解する、腐敗する",d:"to break down or decay into simpler parts",e:"Fallen leaves slowly decompose into soil."},
+{w:"photosynthesize",m:"光合成する",d:"to make food from light, as green plants do",e:"Plants photosynthesize using sunlight and carbon dioxide."},
+{w:"carbon dioxide",m:"二酸化炭素",d:"a gas breathed out by animals and absorbed by plants",e:"Trees absorb carbon dioxide from the air."},
+{w:"carbohydrate",m:"炭水化物",d:"a nutrient such as sugar or starch that gives energy",e:"Rice and bread are rich in carbohydrates."},
+{w:"indispensable",m:"不可欠な",d:"absolutely necessary",e:"Water is indispensable for life."},
+{w:"organic matter",m:"有機物",d:"material that comes from living things",e:"Healthy soil is full of organic matter."},
+{w:"resilience",m:"回復力、弾力性",d:"the ability to recover quickly from difficulty",e:"The community showed great resilience after the flood."},
+{w:"pathogenic",m:"病原性の",d:"capable of causing disease",e:"Some bacteria are pathogenic to humans."},
+{w:"amphibian",m:"両生類(カエル・イモリなど)",d:"an animal that lives both in water and on land",e:"A frog is an amphibian."},
+{w:"eruption",m:"噴火",d:"a sudden violent bursting out, as of a volcano",e:"The eruption sent ash high into the sky."},
+{w:"erupt",m:"噴火する",d:"to burst out suddenly and violently",e:"The volcano could erupt at any moment."},
+{w:"destructive",m:"破壊的な",d:"causing great damage",e:"The storm was extremely destructive."},
+{w:"nearby",m:"近くの",d:"located a short distance away",e:"We ate at a nearby restaurant."},
+{w:"nearly",m:"ほとんど、もう少しで",d:"almost",e:"It is nearly midnight."},
+{w:"reliance",m:"依存、信頼",d:"dependence on or trust in something",e:"Our reliance on oil must be reduced."},
+{w:"emission",m:"排出(量)",d:"the release of gas or other substances",e:"The law limits carbon emissions from factories."},
+{w:"steady",m:"安定した、一定の",d:"firm and regular; not changing",e:"She kept a steady pace during the race."},
+{w:"intermittent",m:"断続的な",d:"stopping and starting at intervals",e:"There will be intermittent rain today."},
+{w:"harness",m:"利用する、動力化する",d:"to control and use the power of something",e:"Windmills harness the power of the wind."},
+{w:"consistent",m:"一貫した",d:"always behaving or happening in the same way",e:"His work is consistent and reliable."},
+{w:"inconsistent",m:"一貫していない、矛盾した",d:"not staying the same; contradictory",e:"Her story was inconsistent with the facts."},
+{w:"excess",m:"余剰の、過剰(の)",d:"more than what is needed or usual",e:"Pour off any excess water."},
+{w:"drawback",m:"欠点、不利な点",d:"a disadvantage or problem",e:"The main drawback of the plan is its cost."},
+{w:"supply order",m:"備品発注",d:"a request to purchase supplies",e:"She placed a supply order for new printers."},
+{w:"shipment",m:"出荷、発送品",d:"goods sent together; the act of shipping",e:"The shipment will arrive next week."},
+{w:"move",m:"(ビジネスなどの)策、手",d:"an action taken to achieve a purpose",e:"Launching the app was a smart move."},
+{w:"in advance",m:"事前に、前もって",d:"beforehand",e:"Please book your seat in advance."},
+{w:"banquet",m:"宴会、晩餐会",d:"a formal meal for many people",e:"The company held a banquet for its guests."},
+{w:"promotional event",m:"販促イベント",d:"an event held to advertise a product",e:"The store hosted a promotional event for the new phone."},
+{w:"basement",m:"地下、地階",d:"the floor of a building below ground level",e:"They store old boxes in the basement."},
+{w:"disruptive",m:"破壊的な、変革をもたらす",d:"causing disturbance or radical change",e:"Streaming was a disruptive technology for TV."},
+{w:"complacency",m:"自己満足、慢心",d:"a feeling of smug satisfaction that stops effort",e:"Success can lead to complacency."},
+{w:"coined by",m:"~によって造語された",d:"invented as a new word or phrase by someone",e:"The term was coined by a famous scientist."},
+{w:"established business",m:"既存の企業、大企業",d:"a company that has existed for a long time",e:"New startups compete with established businesses."},
+{w:"overlooked",m:"見落とされている",d:"not noticed or given proper attention",e:"This small detail is often overlooked."},
+{w:"brick-and-mortar",m:"実店舗の、従来型の",d:"operating in a physical store rather than online",e:"Many brick-and-mortar shops now also sell online."},
+{w:"dissonance",m:"不協和、不一致",d:"a lack of harmony or agreement",e:"There was dissonance between his words and actions."},
+{w:"contradictory",m:"矛盾した",d:"containing opposing elements; inconsistent",e:"The two reports gave contradictory results."},
+{w:"cognitive dissonance",m:"認知的不協和",d:"mental discomfort from holding conflicting beliefs",e:"He felt cognitive dissonance when his beliefs were challenged."}
 ];
 </script>
 <script>
 // ---------- 学習記録 ----------
 const KEY = "toefl_vocab_v1";
-let store = {stats:{}, asked:0, correct:0};
-try { const s = localStorage.getItem(KEY); if (s) store = JSON.parse(s); } catch(e) {}
+let store = {stats:{}, asked:0, correct:0, flags:{}};
+try { const s = localStorage.getItem(KEY); if (s) store = Object.assign(store, JSON.parse(s)); } catch(e) {}
+if (!store.flags) store.flags = {};
 function save(){ try { localStorage.setItem(KEY, JSON.stringify(store)); } catch(e) {} }
 function st(w){ if(!store.stats[w]) store.stats[w] = {c:0, w:0}; return store.stats[w]; }
 
@@ -298,6 +353,7 @@ function weight(word){
   if (!s) return 3;                      // 未出題はやや高め
   let v = 2 + s.w * 4 - s.c;             // 間違い1回で+4、正解1回で-1
   if (s.w > 0 && s.c === 0) v += 2;      // 一度も正解していない苦手語をさらに強化
+  if (store.flags[word.w]) v += 3;       // ☆チェック単語も出やすく
   return Math.max(0.4, Math.min(v, 25));
 }
 let current = null, prevWord = null, phase = 0;
@@ -318,13 +374,32 @@ function similar(a, b){
   for (let i = 0; i <= ca.length - 2; i++){ if (cb.includes(ca.substr(i, 2))) return true; }
   return false;
 }
+function jcat(m){ // 意味の品詞っぽさを推定
+  const t = m.replace(/((.*?))|\(.*?\)/g, "").split("、")[0].trim();
+  if (/する$/.test(t)) return "vs";
+  if (/[うくぐすつぬぶむ]$|[られめけせえ]る$/.test(t)) return "v";
+  if (/[なのい]$|的$/.test(t)) return "adj";
+  if (/に$/.test(t)) return "adv";
+  return "n";
+}
+function spellSim(a, b){ // 綴りが紛らわしいか
+  a = a.toLowerCase(); b = b.toLowerCase();
+  if (a.includes(b) || b.includes(a)) return true;
+  let p = 0; while (p < a.length && p < b.length && a[p] === b[p]) p++;
+  if (p >= 4) return true;
+  let s = 0; while (s < a.length && s < b.length && a[a.length-1-s] === b[b.length-1-s]) s++;
+  return s >= 5;
+}
 function makeChoices(word){
+  const cat = jcat(word.m);
+  const cands = WORDS
+    .filter(x => x.w !== word.w && !similar(x.m, word.m))
+    .map(x => ({x, s:(jcat(x.m) === cat ? 3 : 0) + (spellSim(x.w, word.w) ? 5 : 0) + Math.random() * 2.5}))
+    .sort((a, b) => b.s - a.s);
   const distractors = [];
-  const pool = WORDS.filter(x => x.w !== word.w).sort(() => Math.random() - 0.5);
-  for (const x of pool){
-    if (similar(x.m, word.m)) continue;
-    if (distractors.some(d => similar(d, x.m))) continue;
-    distractors.push(x.m);
+  for (const c of cands){
+    if (distractors.some(d => similar(d, c.x.m))) continue;
+    distractors.push(c.x.m);
     if (distractors.length === 3) break;
   }
   return [word.m, ...distractors].sort(() => Math.random() - 0.5);
@@ -353,14 +428,20 @@ function show(word){
   $("word").textContent = word.w;
   $("example").style.display = "none";
   $("example").innerHTML = "";
+  $("definition").style.display = "none";
   $("choices").style.display = "none";
   $("choices").innerHTML = "";
-  $("result").style.display = "none";
   $("answer-detail").style.display = "none";
-  $("next-btn").style.display = "none";
+  $("bottom-bar").style.display = "none";
   $("hint").style.display = "block";
   $("hint").textContent = "タップして例文を表示";
+  updateFlagBtn();
   renderStats();
+}
+function updateFlagBtn(){
+  const on = !!store.flags[current.w];
+  $("flag-btn").textContent = on ? "★" : "☆";
+  $("flag-btn").classList.toggle("on", on);
 }
 function showExample(){
   phase = 1;
@@ -371,6 +452,8 @@ function showExample(){
   b.onclick = ev => { ev.stopPropagation(); speak(current.e); };
   $("example").appendChild(b);
   $("example").style.display = "block";
+  $("definition").textContent = "📖 " + current.d;
+  $("definition").style.display = "block";
   $("hint").textContent = "タップして意味を4択から選ぶ";
 }
 function showChoices(){
@@ -401,10 +484,9 @@ function answer(btn, m){
   const r = $("result");
   r.textContent = ok ? "✅ 正解!" : "❌ 不正解…";
   r.className = ok ? "ok" : "ng";
-  r.style.display = "block";
   $("answer-detail").textContent = `${current.w} = ${current.m}`;
   $("answer-detail").style.display = "block";
-  $("next-btn").style.display = "inline-block";
+  $("bottom-bar").style.display = "flex";
   renderStats();
 }
 $("card").onclick = () => {
@@ -412,13 +494,17 @@ $("card").onclick = () => {
   else if (phase === 1) showChoices();
 };
 $("speak").onclick = ev => { ev.stopPropagation(); speak(current.w); };
+$("flag-btn").onclick = ev => {
+  ev.stopPropagation();
+  if (store.flags[current.w]) delete store.flags[current.w];
+  else store.flags[current.w] = true;
+  save(); updateFlagBtn();
+};
 $("next-btn").onclick = ev => { ev.stopPropagation(); prevWord = current.w; show(pickWord()); };
 
-// ---------- 苦手リスト / リセット ----------
-$("weak-btn").onclick = () => {
-  const list = Object.entries(store.stats)
-    .filter(([, s]) => s.w > 0)
-    .sort((a, b) => b[1].w - a[1].w);
+// ---------- 単語リスト(苦手 / ☆チェック) ----------
+function renderWeak(){
+  const list = Object.entries(store.stats).filter(([, s]) => s.w > 0).sort((a, b) => b[1].w - a[1].w);
   const box = $("weak-list");
   box.innerHTML = list.length ? "" : "<p style='color:var(--sub);font-size:14px;'>まだ間違えた単語はありません。</p>";
   list.forEach(([w, s]) => {
@@ -428,13 +514,32 @@ $("weak-btn").onclick = () => {
     row.innerHTML = `<span>${w}</span><span class="m">${word.m}</span><span class="badge">×${s.w}</span>`;
     box.appendChild(row);
   });
-  $("modal").style.display = "flex";
-};
+}
+function renderFlag(){
+  const list = Object.keys(store.flags).filter(w => store.flags[w]);
+  const box = $("weak-list");
+  box.innerHTML = list.length ? "" : "<p style='color:var(--sub);font-size:14px;'>☆でチェックした単語はまだありません。カードの☆を押すと登録されます。</p>";
+  list.forEach(w => {
+    const word = WORDS.find(x => x.w === w); if (!word) return;
+    const row = document.createElement("div");
+    row.className = "weak-row";
+    row.innerHTML = `<span>${w}</span><span class="m">${word.m}</span><span class="badge flag">★</span>`;
+    box.appendChild(row);
+  });
+}
+$("list-btn").onclick = () => { setTab("weak"); $("modal").style.display = "flex"; };
+function setTab(which){
+  $("tab-weak").classList.toggle("active", which === "weak");
+  $("tab-flag").classList.toggle("active", which === "flag");
+  which === "weak" ? renderWeak() : renderFlag();
+}
+$("tab-weak").onclick = () => setTab("weak");
+$("tab-flag").onclick = () => setTab("flag");
 $("close-modal").onclick = () => $("modal").style.display = "none";
 $("modal").onclick = ev => { if (ev.target === $("modal")) $("modal").style.display = "none"; };
 $("reset-btn").onclick = () => {
-  if (confirm("学習記録(正解・不正解の履歴)をすべてリセットしますか?")){
-    store = {stats:{}, asked:0, correct:0}; save(); show(pickWord());
+  if (confirm("学習記録(正解・不正解の履歴)をリセットしますか?\n※☆チェックした単語は残ります。")){
+    store = {stats:{}, asked:0, correct:0, flags:store.flags}; save(); show(pickWord());
   }
 };
 
