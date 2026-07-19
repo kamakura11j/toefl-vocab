@@ -17,8 +17,8 @@
   main{width:100%; max-width:640px; padding:16px; flex:1;}
   .card{background:var(--card); border-radius:18px; padding:28px 22px; box-shadow:0 8px 24px rgba(0,0,0,.35); cursor:pointer; user-select:none; min-height:340px; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; transition:transform .08s;}
   .card:active{transform:scale(.99);}
-  .word-row{display:flex; align-items:center; gap:12px; margin-top:26px;}
-  #word{font-size:34px; font-weight:800; letter-spacing:.5px; text-align:center;}
+  .word-row{display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:10px; margin-top:22px; width:100%;}
+  #word{font-size:34px; font-weight:800; letter-spacing:.3px; text-align:center; max-width:100%; overflow-wrap:anywhere; word-break:break-word; line-height:1.25;}
   .speak-btn{background:var(--card2); border:none; border-radius:50%; width:46px; height:46px; font-size:20px; cursor:pointer; color:var(--accent); flex:0 0 auto;}
   .speak-btn:active{background:#334760;}
   .hint{color:var(--sub); font-size:13px; margin-top:auto; padding-top:24px;}
@@ -48,6 +48,12 @@
   .tabs{display:flex; gap:8px; margin-bottom:14px;}
   .tab{flex:1; background:var(--card2); border:none; color:var(--sub); border-radius:8px; padding:9px; font-size:13px; cursor:pointer;}
   .tab.active{background:var(--accent); color:#082f49; font-weight:700;}
+  #mode-bar{display:none; width:100%; max-width:640px; padding:10px 16px 0; align-items:center; justify-content:space-between; gap:10px;}
+  #mode-label{font-size:12px; color:#fbbf24; font-weight:700;}
+  #mode-off{background:var(--card2); border:none; color:var(--text); border-radius:8px; padding:6px 12px; font-size:12px; cursor:pointer;}
+  #flag-test-btn{display:none; width:100%; margin-bottom:12px; background:#fbbf24; color:#1e293b; border:none; border-radius:10px; padding:12px; font-size:14px; font-weight:700; cursor:pointer;}
+  .row-btn{background:transparent; border:1px solid #475569; color:var(--sub); border-radius:6px; padding:3px 9px; font-size:12px; cursor:pointer; margin-left:8px; flex:0 0 auto;}
+  .row-btn:active{background:var(--card2);}
   #close-modal{margin-top:14px; width:100%; background:var(--card2); border:none; color:var(--text); border-radius:10px; padding:11px; cursor:pointer;}
 </style>
 </head>
@@ -56,6 +62,10 @@
   <h1>TOEFL単語トレーナー</h1>
   <div id="stats"></div>
 </header>
+<div id="mode-bar">
+  <span id="mode-label">★ チェック単語のみ出題中</span>
+  <button id="mode-off">全単語に戻す</button>
+</div>
 <main>
   <div class="card" id="card">
     <div class="word-row">
@@ -80,6 +90,7 @@
     <button class="tab active" id="tab-weak">苦手(間違えた)</button>
     <button class="tab" id="tab-flag">☆チェック済み</button>
   </div>
+  <button id="flag-test-btn">★ この単語だけでテストする</button>
   <div id="weak-list"></div>
   <button id="close-modal">閉じる</button>
 </div></div>
@@ -335,7 +346,94 @@ const WORDS = [
 {w:"brick-and-mortar",m:"実店舗の、従来型の",d:"operating in a physical store rather than online",e:"Many brick-and-mortar shops now also sell online."},
 {w:"dissonance",m:"不協和、不一致",d:"a lack of harmony or agreement",e:"There was dissonance between his words and actions."},
 {w:"contradictory",m:"矛盾した",d:"containing opposing elements; inconsistent",e:"The two reports gave contradictory results."},
-{w:"cognitive dissonance",m:"認知的不協和",d:"mental discomfort from holding conflicting beliefs",e:"He felt cognitive dissonance when his beliefs were challenged."}
+{w:"cognitive dissonance",m:"認知的不協和",d:"mental discomfort from holding conflicting beliefs",e:"He felt cognitive dissonance when his beliefs were challenged."},
+{w:"back-to-back",m:"立て続けに、連続して",d:"happening one after another without a break",e:"She had three back-to-back meetings this morning."},
+{w:"aware",m:"分かっている、気づいている",d:"knowing that something exists or is happening",e:"I was not aware of the deadline."},
+{w:"definition",m:"定義",d:"a statement of the exact meaning of a word",e:"Look up the definition of this term."},
+{w:"bond",m:"絆、結びつき",d:"a close connection between people",e:"There is a strong bond between the two sisters."},
+{w:"mutual aid",m:"相互扶助",d:"people helping one another for shared benefit",e:"The village survived through mutual aid."},
+{w:"emerge",m:"出現する、現れる",d:"to come out or become known",e:"New evidence emerged during the trial."},
+{w:"application",m:"応用、適用、申込",d:"the act of putting something to use; a formal request",e:"This theory has many practical applications."},
+{w:"relief",m:"救援、安心",d:"help given to those in need; the feeling after worry ends",e:"Relief supplies reached the flooded area."},
+{w:"abstract",m:"抽象的な",d:"existing as an idea rather than a physical thing",e:"Freedom is an abstract concept."},
+{w:"concrete",m:"具体的な",d:"specific and real, not abstract",e:"Give me a concrete example."},
+{w:"exclusion",m:"排除、除外",d:"the act of keeping someone or something out",e:"The exclusion of these groups caused protests."},
+{w:"mobilize",m:"動員する",d:"to organize people or resources for action",e:"The country mobilized troops for the emergency."},
+{w:"outcome",m:"成果、結果",d:"the result of an action or process",e:"The outcome of the study surprised researchers."},
+{w:"paycheck",m:"給料",d:"the money a worker is paid",e:"He spends most of his paycheck on rent."},
+{w:"inventory",m:"棚卸し(をする)、在庫",d:"a complete list of goods; to count stock",e:"The store takes inventory every month."},
+{w:"auditorium",m:"講堂、観客席",d:"a large room where an audience gathers",e:"The lecture was held in the main auditorium."},
+{w:"anthropologist",m:"人類学者",d:"a scientist who studies human societies and cultures",e:"The anthropologist lived with the tribe for a year."},
+{w:"ritual",m:"儀式",d:"a set of actions performed in a fixed order, often religious",e:"The ceremony follows an ancient ritual."},
+{w:"authentic",m:"本場の、本物の",d:"real and genuine, not a copy",e:"This restaurant serves authentic Thai food."},
+{w:"disrespectful",m:"無礼な、失礼な",d:"showing a lack of respect",e:"It is disrespectful to interrupt your teacher."},
+{w:"intrusive",m:"(プライバシーを)侵害する、立ち入った",d:"entering where one is not wanted",e:"The reporter asked intrusive questions."},
+{w:"the Arctic",m:"北極(圏)",d:"the region around the North Pole",e:"Ice in the Arctic is melting rapidly."},
+{w:"evacuation",m:"避難",d:"the act of moving people away from danger",e:"The evacuation of the town took several hours."},
+{w:"forthcoming",m:"近日公開の、来たるべき",d:"about to happen or appear soon",e:"Her forthcoming book will be published in May."},
+{w:"pose",m:"(問題を)引き起こす、提起する",d:"to present a problem or question",e:"Rising sea levels pose a serious threat."},
+{w:"ocean acidification",m:"海洋酸性化",d:"the process by which seawater becomes more acidic",e:"Ocean acidification harms shellfish and coral."},
+{w:"dissolve",m:"溶ける、分解する",d:"to mix into a liquid and disappear",e:"Sugar dissolves quickly in hot water."},
+{w:"mitigate",m:"軽減する、和らげる",d:"to make something less severe",e:"Planting trees can mitigate climate change."},
+{w:"alleviate",m:"緩和する",d:"to make pain or a problem less serious",e:"This medicine helps alleviate the pain."},
+{w:"acidic",m:"酸性の",d:"having the properties of an acid",e:"Lemon juice is highly acidic."},
+{w:"coral",m:"サンゴ",d:"a hard substance formed by small sea animals",e:"Warm water is destroying the coral reefs."},
+{w:"skeleton",m:"骨格、骨組み",d:"the framework of bones in a body",e:"The museum displays a dinosaur skeleton."},
+{w:"vulnerability",m:"脆弱性、弱さ",d:"the state of being easily harmed",e:"Poverty increases a community's vulnerability."},
+{w:"erosion",m:"浸食",d:"the gradual wearing away by water or wind",e:"Erosion has changed the shape of the coastline."},
+{w:"symbiotic",m:"共生の",d:"involving two organisms living together for mutual benefit",e:"Bees and flowers have a symbiotic relationship."},
+{w:"mollusk",m:"軟体動物(カキ・アサリなど)",d:"a soft-bodied animal, often with a shell",e:"Oysters and clams are mollusks."},
+{w:"aquaculture",m:"水産養殖",d:"the farming of fish and other water organisms",e:"Aquaculture now supplies much of the world's fish."},
+{w:"fragile",m:"脆い、壊れやすい",d:"easily broken or damaged",e:"Please handle this fragile glass carefully."},
+{w:"medieval",m:"中世の",d:"relating to the Middle Ages",e:"The town has a medieval castle."},
+{w:"encompass",m:"包含する、取り囲む",d:"to include a wide range of things",e:"The course encompasses both theory and practice."},
+{w:"feudalism",m:"封建制",d:"a medieval system where lords granted land for service",e:"Feudalism shaped medieval European society."},
+{w:"boundary",m:"境界",d:"a line that marks a limit",e:"The river forms the boundary between the two states."},
+{w:"witness",m:"~を目撃する、目撃者",d:"to see an event happen; a person who saw it",e:"Several people witnessed the accident."},
+{w:"ethical",m:"倫理的な",d:"relating to what is morally right",e:"The company follows ethical business practices."},
+{w:"reservation",m:"懸念、予約",d:"a doubt about a plan; an arrangement to hold a seat",e:"I have reservations about this proposal."},
+{w:"mixed review",m:"賛否両論",d:"opinions that are partly positive and partly negative",e:"The film received mixed reviews from critics."},
+{w:"ambiance",m:"雰囲気",d:"the mood or atmosphere of a place",e:"The cafe has a relaxing ambiance."},
+{w:"cozy",m:"居心地の良い",d:"warm, comfortable, and pleasant",e:"We sat in a cozy little room by the fire."},
+{w:"pastry",m:"焼き菓子、ペストリー",d:"a sweet baked food made from dough",e:"She bought a pastry and coffee for breakfast."},
+{w:"maritime",m:"海上の、海の",d:"relating to the sea or shipping",e:"Maritime trade connected distant cities."},
+{w:"land-based",m:"陸上の、陸路の",d:"located or operating on land rather than at sea",e:"Land-based routes were slower than sea travel."},
+{w:"lucrative",m:"もうかる、儲けの多い",d:"producing a lot of money",e:"Selling spices was a lucrative business."},
+{w:"Buddhism",m:"仏教",d:"a religion based on the teachings of the Buddha",e:"Buddhism spread from India across Asia."},
+{w:"commodity",m:"商品、産物",d:"a raw material or product that can be bought and sold",e:"Coffee is an important commodity in this region."},
+{w:"sought-after",m:"需要のある、引く手あまたの",d:"wanted by many people",e:"This artist's work is highly sought-after."},
+{w:"hallmark",m:"(優れた)特徴、目印",d:"a typical feature that identifies something",e:"Attention to detail is the hallmark of her work."},
+{w:"mimicry",m:"擬態、真似",d:"copying the appearance or behavior of something else",e:"Some insects use mimicry to avoid predators."},
+{w:"interweave",m:"織り交ぜる",d:"to combine or mix things closely together",e:"The novel interweaves history and fiction."},
+{w:"ascend",m:"登る、上昇する",d:"to go up",e:"The balloon slowly ascended into the sky."},
+{w:"descend",m:"降りる、下降する",d:"to go down",e:"The plane began to descend toward the airport."},
+{w:"be accustomed to",m:"~に慣れている",d:"used to something through experience",e:"She is accustomed to working long hours."},
+{w:"persuasive",m:"説得力のある",d:"able to convince others",e:"He made a persuasive argument for the plan."},
+{w:"skeptical",m:"懐疑的な",d:"having doubts; not easily convinced",e:"Scientists were skeptical of the new claim."},
+{w:"in person",m:"直接、対面で",d:"physically present rather than online or by phone",e:"I would like to discuss it in person."},
+{w:"communal",m:"共同の、共有の",d:"shared by members of a group",e:"The building has a communal kitchen."},
+{w:"fundamental",m:"根本的な、基本的な",d:"forming a necessary base; most important",e:"Trust is fundamental to any relationship."},
+{w:"in the presence of",m:"~が存在するところで、~の面前で",d:"in the same place as something or someone",e:"The reaction occurs in the presence of oxygen."},
+{w:"unwritten",m:"書かれていない、暗黙の",d:"not recorded in writing but understood",e:"There are unwritten rules in every office."},
+{w:"blooming",m:"開花(している)",d:"producing flowers",e:"The garden is blooming in early spring."},
+{w:"migration",m:"移動、移住",d:"the movement of people or animals to another place",e:"Bird migration happens every autumn."},
+{w:"hibernation",m:"冬眠",d:"a deep sleep some animals enter during winter",e:"Bears enter hibernation when food is scarce."},
+{w:"sync",m:"同期する、同期",d:"to make things happen at the same time",e:"The app syncs your data across devices."},
+{w:"except",m:"~を除いて、除外する",d:"not including",e:"Everyone came except John."},
+{w:"emerging",m:"新たに現れる、新興の",d:"newly appearing or developing",e:"Emerging technologies are changing the industry."},
+{w:"conceal",m:"隠す",d:"to hide something from view",e:"He tried to conceal his disappointment."},
+{w:"prey",m:"獲物、エサ",d:"an animal hunted by another for food",e:"The owl hunts small prey at night."},
+{w:"deter",m:"~を抑止する、思いとどまらせる",d:"to discourage someone from doing something",e:"Bright lights deter animals from the field."},
+{w:"startle",m:"びっくりさせる",d:"to surprise someone suddenly",e:"The loud noise startled the birds."},
+{w:"elaborate",m:"詳しく説明する、精巧な",d:"to explain in more detail; carefully made",e:"Could you elaborate on that point?"},
+{w:"disperse",m:"分散させる、散らばる",d:"to spread out over a wide area",e:"The wind disperses the seeds."},
+{w:"spore",m:"胞子",d:"a tiny cell from which fungi and ferns grow",e:"Mushrooms reproduce by releasing spores."},
+{w:"intriguing",m:"興味深い、興味をそそる",d:"very interesting because it is unusual",e:"She raised an intriguing question."},
+{w:"molecular",m:"分子の、分子レベルの",d:"relating to molecules",e:"Scientists studied the molecular structure of the drug."},
+{w:"delve into",m:"深く掘り下げる",d:"to investigate something thoroughly",e:"The article delves into the causes of the crisis."},
+{w:"extinction",m:"絶滅",d:"the state of a species no longer existing",e:"Hunting drove the species to extinction."},
+{w:"conservation",m:"保護、保全",d:"the protection of nature and resources",e:"Conservation efforts saved the wetland."},
+{w:"accuracy",m:"正確さ",d:"the quality of being correct and exact",e:"The report was praised for its accuracy."}
 ];
 </script>
 <script>
@@ -356,9 +454,18 @@ function weight(word){
   if (store.flags[word.w]) v += 3;       // ☆チェック単語も出やすく
   return Math.max(0.4, Math.min(v, 25));
 }
-let current = null, prevWord = null, phase = 0;
+let current = null, prevWord = null, phase = 0, mode = "all";
+function activePool(){
+  if (mode === "flag"){
+    const p = WORDS.filter(x => store.flags[x.w]);
+    if (p.length) return p;
+    mode = "all";                       // ☆が0件になったら自動で全単語へ
+  }
+  return WORDS;
+}
 function pickWord(){
-  const pool = WORDS.filter(x => x.w !== prevWord);
+  const base = activePool();
+  const pool = base.length > 1 ? base.filter(x => x.w !== prevWord) : base;
   let total = 0; const ws = pool.map(x => { const v = weight(x); total += v; return v; });
   let r = Math.random() * total;
   for (let i = 0; i < pool.length; i++){ r -= ws[i]; if (r <= 0) return pool[i]; }
@@ -421,7 +528,9 @@ function speak(text){
 const $ = id => document.getElementById(id);
 function renderStats(){
   const rate = store.asked ? Math.round(store.correct / store.asked * 100) : 0;
-  $("stats").textContent = `全${WORDS.length}語 | 出題${store.asked}回 | 正解率${rate}%`;
+  const n = Object.keys(store.flags).length;
+  const scope = (mode === "flag") ? `★${n}語` : `全${WORDS.length}語`;
+  $("stats").textContent = `${scope} | 出題${store.asked}回 | 正解率${rate}%`;
 }
 function show(word){
   current = word; phase = 0;
@@ -435,8 +544,14 @@ function show(word){
   $("bottom-bar").style.display = "none";
   $("hint").style.display = "block";
   $("hint").textContent = "タップして例文を表示";
+  const n = word.w.length;                       // 長い語は縮めて折り返す
+  $("word").style.fontSize = n <= 11 ? "34px" : n <= 16 ? "28px" : n <= 22 ? "23px" : "19px";
   updateFlagBtn();
+  updateModeBar();
   renderStats();
+}
+function updateModeBar(){
+  $("mode-bar").style.display = (mode === "flag") ? "flex" : "none";
 }
 function updateFlagBtn(){
   const on = !!store.flags[current.w];
@@ -518,12 +633,24 @@ function renderWeak(){
 function renderFlag(){
   const list = Object.keys(store.flags).filter(w => store.flags[w]);
   const box = $("weak-list");
+  $("flag-test-btn").style.display = list.length ? "block" : "none";
   box.innerHTML = list.length ? "" : "<p style='color:var(--sub);font-size:14px;'>☆でチェックした単語はまだありません。カードの☆を押すと登録されます。</p>";
   list.forEach(w => {
     const word = WORDS.find(x => x.w === w); if (!word) return;
     const row = document.createElement("div");
     row.className = "weak-row";
-    row.innerHTML = `<span>${w}</span><span class="m">${word.m}</span><span class="badge flag">★</span>`;
+    const label = document.createElement("span"); label.textContent = w;
+    const mean = document.createElement("span"); mean.className = "m"; mean.textContent = word.m;
+    const btn = document.createElement("button");
+    btn.className = "row-btn"; btn.textContent = "★解除";
+    btn.onclick = () => {
+      delete store.flags[w]; save();
+      renderFlag();
+      if (current && current.w === w) updateFlagBtn();
+      if (mode === "flag" && !Object.keys(store.flags).length){ mode = "all"; updateModeBar(); }
+      renderStats();
+    };
+    row.append(label, mean, btn);
     box.appendChild(row);
   });
 }
@@ -531,10 +658,18 @@ $("list-btn").onclick = () => { setTab("weak"); $("modal").style.display = "flex
 function setTab(which){
   $("tab-weak").classList.toggle("active", which === "weak");
   $("tab-flag").classList.toggle("active", which === "flag");
-  which === "weak" ? renderWeak() : renderFlag();
+  if (which === "weak"){ $("flag-test-btn").style.display = "none"; renderWeak(); }
+  else renderFlag();
 }
 $("tab-weak").onclick = () => setTab("weak");
 $("tab-flag").onclick = () => setTab("flag");
+$("flag-test-btn").onclick = () => {
+  mode = "flag";
+  $("modal").style.display = "none";
+  prevWord = null;
+  show(pickWord());
+};
+$("mode-off").onclick = () => { mode = "all"; prevWord = null; show(pickWord()); };
 $("close-modal").onclick = () => $("modal").style.display = "none";
 $("modal").onclick = ev => { if (ev.target === $("modal")) $("modal").style.display = "none"; };
 $("reset-btn").onclick = () => {
