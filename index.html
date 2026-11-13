@@ -54,6 +54,18 @@
   #flag-test-btn{display:none; width:100%; margin-bottom:12px; background:#fbbf24; color:#1e293b; border:none; border-radius:10px; padding:12px; font-size:14px; font-weight:700; cursor:pointer;}
   .row-btn{background:transparent; border:1px solid #475569; color:var(--sub); border-radius:6px; padding:3px 9px; font-size:12px; cursor:pointer; margin-left:8px; flex:0 0 auto;}
   .row-btn:active{background:var(--card2);}
+  #sync-modal{display:none; position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:11; justify-content:center; align-items:center; padding:20px;}
+  #sync-box{background:var(--card); border-radius:16px; max-width:520px; width:100%; max-height:85vh; overflow-y:auto; padding:20px; font-size:14px; line-height:1.7;}
+  #sync-box h2{font-size:16px; margin:0 0 10px; color:var(--accent);}
+  #sync-box ol{padding-left:20px; margin:8px 0 14px; color:var(--sub);}
+  #sync-box a{color:var(--accent);}
+  #token-input{width:100%; background:var(--card2); border:1px solid #475569; color:var(--text); border-radius:8px; padding:10px; font-size:14px; margin:6px 0 12px;}
+  .sync-actions{display:flex; gap:8px;}
+  .sync-actions button{flex:1; border:none; border-radius:10px; padding:11px; font-size:14px; cursor:pointer;}
+  #sync-save{background:var(--accent); color:#082f49; font-weight:700;}
+  #sync-off{background:var(--card2); color:var(--ng);}
+  #sync-close{background:var(--card2); color:var(--text);}
+  #sync-msg{margin-top:10px; font-size:13px; color:var(--sub); min-height:1em;}
   #close-modal{margin-top:14px; width:100%; background:var(--card2); border:none; color:var(--text); border-radius:10px; padding:11px; cursor:pointer;}
 </style>
 </head>
@@ -82,6 +94,7 @@
 </main>
 <footer>
   <button class="ft-btn" id="list-btn">単語リスト</button>
+  <button class="ft-btn" id="sync-btn">☁ 同期: オフ</button>
   <button class="ft-btn" id="reset-btn">記録をリセット</button>
 </footer>
 <div id="bottom-bar"><span id="result"></span><button id="next-btn">次へ →</button></div>
@@ -93,6 +106,24 @@
   <button id="flag-test-btn">★ この単語だけでテストする</button>
   <div id="weak-list"></div>
   <button id="close-modal">閉じる</button>
+</div></div>
+
+<div id="sync-modal"><div id="sync-box">
+  <h2>☁ PC・スマホ間の同期設定</h2>
+  <div>GitHubに学習記録(正解・不正解、★チェック)を保存し、どの端末からでも同じ記録で学習できるようにします。<b>各端末で1回だけ</b>設定してください。</div>
+  <ol>
+    <li><a href="https://github.com/settings/tokens/new?scopes=gist&description=toefl-vocab-sync" target="_blank" rel="noopener">こちら</a>を開く(GitHubにログインした状態で)</li>
+    <li>「Expiration」を <b>No expiration</b> に変更</li>
+    <li>「gist」にチェックが入っていることを確認 → 一番下の <b>Generate token</b></li>
+    <li>表示された <b>ghp_</b> で始まる文字列をコピーして下に貼り付け → 「接続する」</li>
+  </ol>
+  <input id="token-input" type="password" placeholder="ghp_xxxxxxxxxxxxxxxx" autocomplete="off">
+  <div class="sync-actions">
+    <button id="sync-save">接続する</button>
+    <button id="sync-off">同期を解除</button>
+    <button id="sync-close">閉じる</button>
+  </div>
+  <div id="sync-msg"></div>
 </div></div>
 
 <script>
@@ -625,7 +656,11 @@ const KEY = "toefl_vocab_v1";
 let store = {stats:{}, asked:0, correct:0, flags:{}};
 try { const s = localStorage.getItem(KEY); if (s) store = Object.assign(store, JSON.parse(s)); } catch(e) {}
 if (!store.flags) store.flags = {};
-function save(){ try { localStorage.setItem(KEY, JSON.stringify(store)); } catch(e) {} }
+function save(){
+  store.updatedAt = Date.now();
+  try { localStorage.setItem(KEY, JSON.stringify(store)); } catch(e) {}
+  if (typeof schedulePush === "function") schedulePush();
+}
 function st(w){ if(!store.stats[w]) store.stats[w] = {c:0, w:0}; return store.stats[w]; }
 
 // ---------- 出題アルゴリズム(間違いが多いほど高頻度) ----------
@@ -861,9 +896,137 @@ $("reset-btn").onclick = () => {
   }
 };
 
+// ---------- クラウド同期(GitHub Gist) ----------
+const SYNC_KEY = "toefl_vocab_sync";
+const GIST_FILE = "toefl_vocab_progress.json";
+let sync = {token:"", gistId:""};
+try { const s = localStorage.getItem(SYNC_KEY); if (s) sync = Object.assign(sync, JSON.parse(s)); } catch(e) {}
+function saveSync(){ try { localStorage.setItem(SYNC_KEY, JSON.stringify(sync)); } catch(e) {} }
+function setSyncStatus(t){ $("sync-btn").textContent = t; }
+function writeLocal(){ try { localStorage.setItem(KEY, JSON.stringify(store)); } catch(e) {} }
+
+async function gh(path, opts = {}){
+  const r = await fetch("https://api.github.com" + path, Object.assign({}, opts, {
+    headers: {"Authorization":"Bearer " + sync.token, "Accept":"application/vnd.github+json", "Content-Type":"application/json"},
+    cache: "no-store"
+  }));
+  if (!r.ok) { const err = new Error("HTTP " + r.status); err.status = r.status; throw err; }
+  return r.json();
+}
+function mergeStores(a, b){   // 初回接続時のみ:両端末の記録を統合(消さない)
+  const out = {stats:{}, asked:Math.max(a.asked||0, b.asked||0), correct:Math.max(a.correct||0, b.correct||0), flags:{}};
+  for (const src of [a.stats||{}, b.stats||{}]) for (const [w, s] of Object.entries(src)){
+    const o = out.stats[w] || {c:0, w:0};
+    out.stats[w] = {c:Math.max(o.c, s.c||0), w:Math.max(o.w, s.w||0)};
+  }
+  Object.assign(out.flags, a.flags||{}, b.flags||{});
+  out.updatedAt = Date.now();
+  return out;
+}
+async function readRemote(){
+  const g = await gh("/gists/" + sync.gistId);
+  const f = g.files && g.files[GIST_FILE];
+  if (!f) return null;
+  let content = f.content;
+  if (f.truncated) content = await (await fetch(f.raw_url, {cache:"no-store"})).text();
+  return JSON.parse(content);
+}
+function applyRemote(remote){
+  store = Object.assign({stats:{}, asked:0, correct:0, flags:{}}, remote);
+  if (!store.flags) store.flags = {};
+  writeLocal();
+  if (current){ updateFlagBtn(); }
+  renderStats();
+}
+async function connectFirstTime(){
+  // 既存のGistを探す(他端末で作成済みならそれを使う)
+  const list = await gh("/gists?per_page=100");
+  const found = list.find(x => x.files && x.files[GIST_FILE]);
+  if (found){
+    sync.gistId = found.id; saveSync();
+    const remote = await readRemote();
+    applyRemote(remote ? mergeStores(store, remote) : store);
+    await push(true);
+  } else {
+    if (!store.updatedAt) store.updatedAt = Date.now();
+    const c = await gh("/gists", {method:"POST", body:JSON.stringify({
+      description:"TOEFL vocab trainer progress (auto sync)", public:false,
+      files:{[GIST_FILE]:{content:JSON.stringify(store)}}
+    })});
+    sync.gistId = c.id; saveSync();
+  }
+}
+let syncing = false;
+async function pull(){
+  if (!sync.token || syncing) return;
+  syncing = true; setSyncStatus("☁ 同期中…");
+  try {
+    if (!sync.gistId){ await connectFirstTime(); }
+    else {
+      const remote = await readRemote();
+      if (!remote){ await push(true); }
+      else if ((remote.updatedAt||0) > (store.updatedAt||0)) applyRemote(remote);
+      else if ((store.updatedAt||0) > (remote.updatedAt||0)) await push(true);
+    }
+    setSyncStatus("☁ 同期済み");
+  } catch(e){
+    setSyncStatus(e.status === 401 ? "⚠ 同期: 要再設定" : "⚠ 同期エラー");
+  } finally { syncing = false; }
+}
+let pushTimer = null;
+function schedulePush(){
+  if (!sync.token || !sync.gistId) return;
+  setSyncStatus("☁ 保存待ち…");
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(() => push(), 1500);
+}
+async function push(silent){
+  clearTimeout(pushTimer); pushTimer = null;
+  if (!sync.token || !sync.gistId) return;
+  try {
+    await gh("/gists/" + sync.gistId, {method:"PATCH", body:JSON.stringify({files:{[GIST_FILE]:{content:JSON.stringify(store)}}})});
+    if (!silent) setSyncStatus("☁ 同期済み");
+  } catch(e){ setSyncStatus("⚠ 同期エラー"); }
+}
+// 画面に戻ってきたら最新を取得、離れるときは未送信分を即送信
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") pull();
+  else if (pushTimer) push();
+});
+
+// 設定モーダル
+$("sync-btn").onclick = () => {
+  $("token-input").value = sync.token ? "(設定済み)" : "";
+  $("sync-msg").textContent = sync.token ? "この端末は同期が有効です。" : "";
+  $("sync-modal").style.display = "flex";
+};
+$("token-input").onfocus = () => { if ($("token-input").value === "(設定済み)") $("token-input").value = ""; };
+$("sync-close").onclick = () => $("sync-modal").style.display = "none";
+$("sync-modal").onclick = ev => { if (ev.target === $("sync-modal")) $("sync-modal").style.display = "none"; };
+$("sync-save").onclick = async () => {
+  const t = $("token-input").value.trim();
+  if (!t || t === "(設定済み)"){ $("sync-msg").textContent = "トークンを貼り付けてください。"; return; }
+  sync = {token:t, gistId:""}; saveSync();
+  $("sync-msg").textContent = "接続中…";
+  await pull();
+  if ($("sync-btn").textContent.startsWith("☁ 同期済み")){
+    $("sync-msg").textContent = "✅ 接続しました。他の端末でも同じ手順で設定すると記録が共有されます。";
+  } else {
+    sync = {token:"", gistId:""}; saveSync(); setSyncStatus("☁ 同期: オフ");
+    $("sync-msg").textContent = "❌ 接続できませんでした。トークンと「gist」のチェックを確認してください。";
+  }
+};
+$("sync-off").onclick = () => {
+  if (!confirm("この端末の同期を解除しますか?(学習記録はこの端末に残ります)")) return;
+  sync = {token:"", gistId:""}; saveSync(); setSyncStatus("☁ 同期: オフ");
+  $("sync-msg").textContent = "同期を解除しました。";
+};
+if (sync.token) setSyncStatus("☁ 同期中…");
+
 // 音声リスト読み込み(初回対策)
 if (typeof speechSynthesis !== "undefined") speechSynthesis.getVoices();
 show(pickWord());
+pull();
 </script>
 </body>
 </html>
